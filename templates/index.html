@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Would They Say</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>What Would They Say?</h1>
+            <p class="tagline">Historical wisdom for modern problems</p>
+        </header>
+
+        <main>
+            <section class="ask-section">
+                <div class="figure-selector">
+                    <label>Choose your advisor:</label>
+                    <div class="figures-grid">
+                        {% for figure in figures %}
+                        <button class="figure-card" data-id="{{ figure.id }}" onclick="selectFigure('{{ figure.id }}')">
+                            <span class="figure-icon">{{ figure.image }}</span>
+                            <div class="figure-info">
+                                <span class="figure-name">{{ figure.name }}</span>
+                                <span class="figure-era">{{ figure.era }}</span>
+                            </div>
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="question-input">
+                    <label for="question">Your question:</label>
+                    <textarea id="question" placeholder="Should I text my ex? How do I deal with imposter syndrome? Why does my cat hate me?"></textarea>
+                    <button id="ask-btn" onclick="askQuestion()">
+                        Seek Wisdom
+                    </button>
+                </div>
+            </section>
+
+            <section id="response" class="response-section" style="display: none;">
+                <div class="advisor-card">
+                    <div class="advisor-header">
+                        <span class="advisor-icon" id="advisor-icon"></span>
+                        <div class="advisor-info">
+                            <h2 id="advisor-name"></h2>
+                            <p id="advisor-title"></p>
+                        </div>
+                    </div>
+                    <blockquote id="advice-text"></blockquote>
+                    <p class="closing" id="closing-text"></p>
+                </div>
+                <button class="btn-again" onclick="reset()">Ask Another Question</button>
+            </section>
+
+            <section class="about">
+                <h2>About This Oracle</h2>
+                <p>Life advice from history's greatest minds, applied to your problems with varying degrees of relevance.</p>
+                <div class="advisors-preview">
+                    <div class="preview-item">
+                        <strong>Marcus Aurelius</strong> on your career anxiety
+                    </div>
+                    <div class="preview-item">
+                        <strong>Oscar Wilde</strong> on your dating life
+                    </div>
+                    <div class="preview-item">
+                        <strong>Cleopatra</strong> on your confidence issues
+                    </div>
+                    <div class="preview-item">
+                        <strong>Socrates</strong> on literally anything (he'll question it)
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Wisdom through the ages, questionable relevance to your actual problems.</p>
+        </footer>
+    </div>
+
+    <script>
+        let selectedFigure = null;
+
+        function selectFigure(id) {
+            // Remove previous selection
+            document.querySelectorAll('.figure-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Select new
+            const card = document.querySelector(`[data-id="${id}"]`);
+            card.classList.add('selected');
+            selectedFigure = id;
+        }
+
+        async function askQuestion() {
+            const question = document.getElementById('question').value;
+            if (!question.trim()) {
+                alert('Please ask a question');
+                return;
+            }
+
+            if (!selectedFigure) {
+                // Random selection
+                const cards = document.querySelectorAll('.figure-card');
+                const randomIndex = Math.floor(Math.random() * cards.length);
+                selectedFigure = cards[randomIndex].dataset.id;
+            }
+
+            const btn = document.getElementById('ask-btn');
+            btn.textContent = 'Consulting the ages...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question,
+                        figure: selectedFigure
+                    })
+                });
+
+                const data = await response.json();
+                showResponse(data);
+            } catch (error) {
+                alert('Failed to seek wisdom: ' + error.message);
+            }
+
+            btn.textContent = 'Seek Wisdom';
+            btn.disabled = false;
+        }
+
+        function showResponse(data) {
+            document.getElementById('advisor-icon').textContent = data.figure.image;
+            document.getElementById('advisor-name').textContent = data.figure.name;
+            document.getElementById('advisor-title').textContent = `${data.figure.title} (${data.figure.era})`;
+            document.getElementById('advice-text').textContent = data.advice;
+            document.getElementById('closing-text').textContent = `— ${data.closing}`;
+
+            document.querySelector('.ask-section').style.display = 'none';
+            document.getElementById('response').style.display = 'block';
+        }
+
+        function reset() {
+            selectedFigure = null;
+            document.querySelectorAll('.figure-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.getElementById('question').value = '';
+            document.querySelector('.ask-section').style.display = 'block';
+            document.getElementById('response').style.display = 'none';
+        }
+
+        // Enter to submit
+        document.getElementById('question').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.metaKey) {
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
